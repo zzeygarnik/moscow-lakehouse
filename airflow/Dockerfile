@@ -26,8 +26,9 @@ RUN curl -fsSL \
 USER airflow
 
 # Airflow Spark provider + producer script dependencies
-RUN pip install --no-cache-dir \
+RUN pip install --no-cache-dir --no-deps \
     apache-airflow-providers-apache-spark==4.7.1 \
+    && pip install --no-cache-dir \
     kafka-python==2.0.2 \
     pandas==2.0.3 \
     python-dotenv==1.0.0
