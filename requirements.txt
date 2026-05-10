@@ -1,0 +1,23 @@
+# Kafka producer
+kafka-python==2.0.2
+
+# Data handling
+pandas==2.1.4
+python-dotenv==1.0.0
+
+# Spark (for local dev / script submission)
+pyspark==3.5.0
+
+# MinIO / S3
+boto3==1.34.34
+
+# PostgreSQL
+psycopg2-binary==2.9.9
+sqlalchemy==2.0.27
+
+# Streamlit UI
+streamlit==1.32.0
+plotly==5.18.0
+
+# DeepSeek (OpenAI-compatible client)
+openai==1.14.0

@@ -1,0 +1,31 @@
+# Secrets
+.env
+
+# Local AI memory — never commit
+.project_context.md
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Data (raw files stay local, not in git)
+data/
+
+# Airflow logs & temp
+logs/
+*.log
+
+# Spark event logs
+spark-warehouse/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
