@@ -16,7 +16,6 @@ x-airflow-common:
     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
     AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth
     AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
-    # Spark connection: Airflow submits jobs in client mode to this master
     AIRFLOW_CONN_SPARK_DEFAULT: "spark://spark-master:7077"
   volumes:
     - ./dags:/opt/airflow/dags
@@ -32,6 +31,25 @@ x-airflow-common:
 # ─────────────────────────────────────────────────────────────
 services:
 
+  # ── Caddy (Reverse Proxy + Auto-HTTPS) ───────────────────
+  caddy:
+    image: caddy:alpine
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - streamlit
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+
   # ── Zookeeper (Kafka dependency) ──────────────────────────
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
@@ -40,11 +58,16 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+      KAFKA_HEAP_OPTS: "-Xmx256m -Xms256m"
     healthcheck:
       test: ["CMD", "bash", "-c", "echo ruok | nc localhost 2181"]
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 320M
 
   # ── Kafka Broker ──────────────────────────────────────────
   kafka:
@@ -63,11 +86,16 @@ services:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_HEAP_OPTS: "-Xmx256m -Xms256m"
     healthcheck:
       test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
       interval: 15s
       timeout: 10s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 384M
 
   # ── PostgreSQL (Airflow meta + Gold layer) ────────────────
   postgres:
@@ -89,6 +117,10 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 256M
 
   # ── MinIO (S3-compatible Lakehouse storage) ───────────────
   minio:
@@ -110,6 +142,10 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 256M
 
   # ── MinIO bucket init (runs once, then exits) ─────────────
   minio-init:
@@ -138,11 +174,16 @@ services:
       SPARK_MASTER_HOST: spark-master
       SPARK_RPC_AUTHENTICATION_ENABLED: "no"
       SPARK_RPC_ENCRYPTION_ENABLED: "no"
+      SPARK_DAEMON_MEMORY: 256m
     ports:
       - "8080:8080"   # Spark Master UI
       - "7077:7077"   # Spark Master port
     volumes:
       - ./spark:/opt/spark-apps
+    deploy:
+      resources:
+        limits:
+          memory: 384M
 
   # ── Spark Worker ──────────────────────────────────────────
   spark-worker:
@@ -153,14 +194,19 @@ services:
     environment:
       SPARK_MODE: worker
       SPARK_MASTER_URL: spark://spark-master:7077
-      SPARK_WORKER_MEMORY: 2G
-      SPARK_WORKER_CORES: 2
+      SPARK_WORKER_MEMORY: 512m
+      SPARK_WORKER_CORES: 1
       SPARK_RPC_AUTHENTICATION_ENABLED: "no"
       SPARK_RPC_ENCRYPTION_ENABLED: "no"
+      SPARK_DAEMON_MEMORY: 256m
     depends_on:
       - spark-master
     volumes:
       - ./spark:/opt/spark-apps
+    deploy:
+      resources:
+        limits:
+          memory: 640M
 
   # ── Airflow DB init (runs once) ───────────────────────────
   airflow-init:
@@ -179,6 +225,10 @@ services:
           --role Admin \
           --email admin@example.com
     restart: "no"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
   # ── Airflow Webserver ─────────────────────────────────────
   airflow-webserver:
@@ -193,6 +243,10 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
   # ── Airflow Scheduler ─────────────────────────────────────
   airflow-scheduler:
@@ -205,6 +259,10 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
   # ── Streamlit App ─────────────────────────────────────────
   streamlit:
@@ -219,8 +277,14 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256M
 
 # ── Named volumes ─────────────────────────────────────────────
 volumes:
   postgres_data:
   minio_data:
+  caddy_data:
+  caddy_config:
