@@ -181,7 +181,7 @@ def generate_answer(client: OpenAI, question: str, sql: str, df: pd.DataFrame) -
 
 # ── Dashboard section ─────────────────────────────────────────
 def render_dashboard() -> None:
-    st.header("📊 Moscow Real Estate — Market Overview")
+    st.header("📊 Рынок недвижимости Москвы — Обзор")
 
     try:
         district_df = load_district_data()
@@ -189,14 +189,14 @@ def render_dashboard() -> None:
         rooms_df    = load_rooms_data()
         data_ok = True
     except Exception as exc:
-        st.warning(f"Dashboard data unavailable: {exc}")
-        st.info("Run the Airflow pipeline at least once to populate Gold tables.")
+        st.warning(f"Данные дашборда недоступны: {exc}")
+        st.info("Запустите Airflow-пайплайн хотя бы раз, чтобы заполнить Gold-таблицы.")
         data_ok = False
 
     if not data_ok:
         return
 
-    # Row 1: two charts
+    # Ряд 1: два графика
     col1, col2 = st.columns(2)
 
     with col1:
@@ -207,17 +207,17 @@ def render_dashboard() -> None:
                 y="avg_price",
                 color="avg_price_per_sqm",
                 color_continuous_scale="Blues",
-                title="Avg Price by District (Top 15)",
+                title="Средняя цена по районам (Топ-15)",
                 labels={
-                    "avg_price":         "Avg Price (₽)",
-                    "avg_price_per_sqm": "₽/m²",
-                    "district":          "District",
+                    "avg_price":         "Средняя цена (₽)",
+                    "avg_price_per_sqm": "₽/м²",
+                    "district":          "Район",
                 },
             )
             fig.update_xaxes(tickangle=45)
             st.plotly_chart(fig, use_container_width=True)
         else:
-            st.info("No district data yet.")
+            st.info("Данных по районам пока нет.")
 
     with col2:
         if not daily_df.empty:
@@ -225,15 +225,15 @@ def render_dashboard() -> None:
                 daily_df,
                 x="listing_date",
                 y="listings_count",
-                title="Daily New Listings Volume",
-                labels={"listing_date": "Date", "listings_count": "Listings"},
+                title="Количество новых объявлений по дням",
+                labels={"listing_date": "Дата", "listings_count": "Объявлений"},
                 markers=True,
             )
             st.plotly_chart(fig2, use_container_width=True)
         else:
-            st.info("No daily data yet.")
+            st.info("Данных по дням пока нет.")
 
-    # Row 2: rooms chart + district table
+    # Ряд 2: график по комнатам + таблица по районам
     col3, col4 = st.columns(2)
 
     with col3:
@@ -242,8 +242,8 @@ def render_dashboard() -> None:
                 rooms_df,
                 x="rooms",
                 y="avg_price",
-                title="Avg Price by Number of Rooms",
-                labels={"rooms": "Rooms", "avg_price": "Avg Price (₽)"},
+                title="Средняя цена по количеству комнат",
+                labels={"rooms": "Комнат", "avg_price": "Средняя цена (₽)"},
                 color="avg_price",
                 color_continuous_scale="Oranges",
             )
@@ -251,11 +251,17 @@ def render_dashboard() -> None:
 
     with col4:
         if not district_df.empty:
-            st.subheader("District Summary")
+            st.subheader("Сводка по районам")
+            display_df = district_df.rename(columns={
+                "district":          "Район",
+                "avg_price":         "Средняя цена",
+                "avg_price_per_sqm": "Цена за м²",
+                "listing_count":     "Объявлений",
+            })
             st.dataframe(
-                district_df.style.format({
-                    "avg_price":         "{:,.0f} ₽",
-                    "avg_price_per_sqm": "{:,.0f} ₽/m²",
+                display_df.style.format({
+                    "Средняя цена": "{:,.0f} ₽",
+                    "Цена за м²":   "{:,.0f} ₽/м²",
                 }),
                 use_container_width=True,
                 height=300,
@@ -264,13 +270,13 @@ def render_dashboard() -> None:
 
 # ── Chat section ──────────────────────────────────────────────
 def render_chat() -> None:
-    st.header("🤖 AI Agent — Ask in Plain Language")
+    st.header("🤖 ИИ-агент — Задайте вопрос")
     st.caption(
-        "Examples: «Где самые дорогие двушки?»  •  «Топ-5 районов по цене за м²»  •  «Сколько объявлений было вчера?»"
+        "Примеры: «Где самые дорогие двушки?»  •  «Топ-5 районов по цене за м²»  •  «Сколько объявлений было вчера?»"
     )
 
     if not DEEPSEEK_API_KEY:
-        st.error("⚠️ DEEPSEEK_API_KEY is not set. Add it to your .env file and restart.")
+        st.error("⚠️ DEEPSEEK_API_KEY не задан. Добавьте его в .env и перезапустите.")
         return
 
     client = get_deepseek_client()
@@ -283,10 +289,10 @@ def render_chat() -> None:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
             if msg.get("sql"):
-                with st.expander("🔍 SQL generated", expanded=False):
+                with st.expander("🔍 Сгенерированный SQL", expanded=False):
                     st.code(msg["sql"], language="sql")
             if msg.get("data") is not None and not msg["data"].empty:
-                with st.expander(f"📋 Raw data ({len(msg['data'])} rows)", expanded=False):
+                with st.expander(f"📋 Данные ({len(msg['data'])} строк)", expanded=False):
                     st.dataframe(msg["data"], use_container_width=True)
 
     # New user input
@@ -296,19 +302,19 @@ def render_chat() -> None:
         st.session_state.messages.append({"role": "user", "content": user_input})
 
         with st.chat_message("assistant"):
-            # Step 1: generate SQL
-            with st.spinner("Step 1/3 — Generating SQL…"):
+            # Шаг 1: генерация SQL
+            with st.spinner("Шаг 1/3 — Генерация SQL…"):
                 sql = generate_sql(client, user_input)
 
-            # Step 2: execute SQL
-            with st.spinner("Step 2/3 — Executing query…"):
+            # Шаг 2: выполнение SQL
+            with st.spinner("Шаг 2/3 — Выполнение запроса…"):
                 df, error = execute_sql(sql)
 
             if error:
                 err_text = (
-                    f"⚠️ **SQL execution failed.**\n\n"
-                    f"**Generated SQL:**\n```sql\n{sql}\n```\n\n"
-                    f"**Error:**\n```\n{error}\n```"
+                    f"⚠️ **Ошибка выполнения SQL.**\n\n"
+                    f"**Запрос:**\n```sql\n{sql}\n```\n\n"
+                    f"**Ошибка:**\n```\n{error}\n```"
                 )
                 st.markdown(err_text)
                 st.session_state.messages.append({
@@ -317,14 +323,14 @@ def render_chat() -> None:
                 })
                 return
 
-            # Step 3: formulate answer
-            with st.spinner("Step 3/3 — Composing answer…"):
+            # Шаг 3: формирование ответа
+            with st.spinner("Шаг 3/3 — Формирование ответа…"):
                 answer = generate_answer(client, user_input, sql, df)
 
             st.markdown(answer)
-            with st.expander("🔍 SQL generated", expanded=False):
+            with st.expander("🔍 Сгенерированный SQL", expanded=False):
                 st.code(sql, language="sql")
-            with st.expander(f"📋 Raw data ({len(df)} rows)", expanded=False):
+            with st.expander(f"📋 Данные ({len(df)} строк)", expanded=False):
                 st.dataframe(df, use_container_width=True)
 
             st.session_state.messages.append({
@@ -338,7 +344,7 @@ def render_chat() -> None:
 # ── Entry point ───────────────────────────────────────────────
 def main() -> None:
     st.set_page_config(
-        page_title="Moscow RE Analytics",
+        page_title="Аналитика недвижимости Москвы",
         page_icon="🏠",
         layout="wide",
         initial_sidebar_state="collapsed",
